@@ -18,12 +18,21 @@ public:
     ~MainWindow();
 
 private slots:
+
     void on_fileScanButton_clicked();
     void on_stegButton_clicked();
+//file scanner functions
     void on_fileButton_clicked();
     void on_scanButton_clicked();
+//steganography functions
+    void on_imageButton_clicked();
+
+    void on_encodeButton_clicked();
+
+    void on_decodeButton_clicked();
 
 private:
     Ui::MainWindow *ui;
+    QImage image;
 };
 #endif // MAINWINDOW_H
