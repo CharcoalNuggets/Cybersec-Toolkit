@@ -40,7 +40,8 @@ public:
     QLabel *decodeLabel;
     QWidget *page_2;
     QPushButton *fileButton;
-    QPushButton *scanButton;
+    QPushButton *hashButton;
+    QPushButton *compareButton;
     QMenuBar *menubar;
     QMenu *menuCybersec_Toolkit;
     QStatusBar *statusbar;
@@ -90,9 +91,12 @@ public:
         fileButton = new QPushButton(page_2);
         fileButton->setObjectName("fileButton");
         fileButton->setGeometry(QRect(170, 260, 80, 24));
-        scanButton = new QPushButton(page_2);
-        scanButton->setObjectName("scanButton");
-        scanButton->setGeometry(QRect(310, 260, 80, 24));
+        hashButton = new QPushButton(page_2);
+        hashButton->setObjectName("hashButton");
+        hashButton->setGeometry(QRect(340, 220, 91, 41));
+        compareButton = new QPushButton(page_2);
+        compareButton->setObjectName("compareButton");
+        compareButton->setGeometry(QRect(340, 290, 91, 41));
         stackedWidget->addWidget(page_2);
         MainWindow->setCentralWidget(centralwidget);
         menubar = new QMenuBar(MainWindow);
@@ -109,7 +113,7 @@ public:
 
         retranslateUi(MainWindow);
 
-        stackedWidget->setCurrentIndex(0);
+        stackedWidget->setCurrentIndex(1);
 
 
         QMetaObject::connectSlotsByName(MainWindow);
@@ -126,7 +130,8 @@ public:
         imageLabel->setText(QString());
         decodeLabel->setText(QString());
         fileButton->setText(QCoreApplication::translate("MainWindow", "Select File", nullptr));
-        scanButton->setText(QCoreApplication::translate("MainWindow", "Scan File", nullptr));
+        hashButton->setText(QCoreApplication::translate("MainWindow", "Create Hash", nullptr));
+        compareButton->setText(QCoreApplication::translate("MainWindow", "Compare File", nullptr));
         menuCybersec_Toolkit->setTitle(QCoreApplication::translate("MainWindow", "Cybersec Toolkit", nullptr));
     } // retranslateUi
 
