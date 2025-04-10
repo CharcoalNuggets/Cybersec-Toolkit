@@ -6,6 +6,8 @@
 #include <QMessageBox>
 #include <QImage>
 #include <QDebug>
+#include <QCryptographicHash>
+
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -29,19 +31,49 @@ void MainWindow::on_stegButton_clicked()
     ui->stackedWidget->setCurrentIndex(0);//stack is in fact zero indexed
 }
 
+//********* file scanner functions *****************************
 
 void MainWindow::on_fileButton_clicked()
 {
     QString fileName = QFileDialog::getOpenFileName(this, "Select a file to scan");
     if(!fileName.isEmpty()) {
-        QMessageBox::information(this, "File selected", "Scanning(wip): " + fileName);
+        selectedFilePath = fileName;
+        QMessageBox::information(this, "File selected", "Operating on: " + selectedFilePath);
     }
 }
 
-void MainWindow::on_scanButton_clicked()
+void MainWindow::on_hashButton_clicked()
 {
-//to be implemented during/after break
+    if (selectedFilePath.isEmpty()) {
+        QMessageBox::warning(this, "No file", "Please select a file first.");
+        return;
+    }
+
+    QFile file(selectedFilePath);
+    if (!file.open(QFile::ReadOnly)) {
+        QMessageBox::warning(this, "Error", "Unable to open file for hashing.");
+        return;
+    }
+
+    QCryptographicHash hash(QCryptographicHash::Sha1);
+    if (!hash.addData(&file)) {
+        QMessageBox::warning(this, "Error", "Failed to hash file.");
+        file.close();
+        return;
+    }
+    file.close();
+
+    QString hexHash = hash.result().toHex();
+    QMessageBox::information(this, "File Hash", "SHA-1:\n" + hexHash);
+
+    //need to upload to firestore
 }
+
+void MainWindow::on_compareButton_clicked()
+{
+
+}
+
 
 //********** steganography functions ****************************
 
@@ -158,3 +190,5 @@ void MainWindow::on_decodeButton_clicked() {
     }
     ui->decodeLabel->setText("Decoded message: " + QString::fromUtf8(message));
 }
+
+
