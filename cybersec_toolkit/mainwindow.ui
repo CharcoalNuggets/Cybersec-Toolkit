@@ -13,6 +13,95 @@
   <property name="windowTitle">
    <string>MainWindow</string>
   </property>
+  <property name="styleSheet">
+   <string notr="true">/* Base application style */
+QWidget {
+    background-color: #121212;
+    color: #e0e0e0;
+    font-family: comic-sans;
+    font-size: 8pt;
+}
+
+/* Buttons */
+QPushButton {
+    background-color: #1f1f1f;
+    color: #ffffff;
+    border: 1px solid #3c3c3c;
+    border-radius: 6px;
+    padding: 4px 8px;
+}
+
+QPushButton:hover {
+    background-color: #2a2a2a;
+}
+
+QPushButton:pressed {
+    background-color: #3a3a3a;
+}
+
+/* Line Edits and Text Areas */
+QLineEdit, QTextEdit, QPlainTextEdit {
+    background-color: #1f1f1f;
+    color: #ffffff;
+    border: 1px solid #3c3c3c;
+    border-radius: 4px;
+    padding: 4px;
+}
+
+/* Labels */
+QLabel {
+    color: #e0e0e0;
+}
+
+/* Combo Boxes */
+QComboBox {
+    background-color: #1f1f1f;
+    color: #ffffff;
+    border: 1px solid #3c3c3c;
+    border-radius: 4px;
+    padding: 4px;
+}
+
+/* Message Boxes */
+QMessageBox {
+    background-color: #1f1f1f;
+    color: #ffffff;
+}
+
+/* Group Boxes */
+QGroupBox {
+    border: 1px solid #3c3c3c;
+    border-radius: 6px;
+    margin-top: 10px;
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top center;
+    padding: 0 3px;
+}
+
+/* Scrollbars */
+QScrollBar:vertical, QScrollBar:horizontal {
+    background: #1f1f1f;
+    border: none;
+    width: 12px;
+    height: 12px;
+    margin: 0px;
+}
+
+QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
+    background: #3c3c3c;
+    min-height: 20px;
+    border-radius: 6px;
+}
+
+QScrollBar::add-line, QScrollBar::sub-line {
+    background: none;
+    border: none;
+}
+</string>
+  </property>
   <widget class="QWidget" name="centralwidget">
    <widget class="QPushButton" name="fileScanButton">
     <property name="geometry">
@@ -41,6 +130,9 @@
       <width>181</width>
       <height>41</height>
      </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true"/>
     </property>
     <property name="text">
      <string>Steganography</string>
@@ -145,44 +237,152 @@
      </widget>
     </widget>
     <widget class="QWidget" name="page_2">
-     <widget class="QPushButton" name="fileButton">
+     <widget class="QStackedWidget" name="stackedWidget_2">
       <property name="geometry">
        <rect>
-        <x>170</x>
-        <y>260</y>
-        <width>80</width>
-        <height>24</height>
+        <x>140</x>
+        <y>180</y>
+        <width>401</width>
+        <height>331</height>
        </rect>
       </property>
-      <property name="text">
-       <string>Select File</string>
+      <property name="currentIndex">
+       <number>0</number>
       </property>
-     </widget>
-     <widget class="QPushButton" name="hashButton">
-      <property name="geometry">
-       <rect>
-        <x>340</x>
-        <y>220</y>
-        <width>91</width>
-        <height>41</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Create Hash</string>
-      </property>
-     </widget>
-     <widget class="QPushButton" name="compareButton">
-      <property name="geometry">
-       <rect>
-        <x>340</x>
-        <y>290</y>
-        <width>91</width>
-        <height>41</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Compare File</string>
-      </property>
+      <widget class="QWidget" name="page">
+       <widget class="QPushButton" name="hashButton">
+        <property name="geometry">
+         <rect>
+          <x>50</x>
+          <y>110</y>
+          <width>91</width>
+          <height>41</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Create Hash</string>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="compareButton">
+        <property name="geometry">
+         <rect>
+          <x>180</x>
+          <y>110</y>
+          <width>91</width>
+          <height>41</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Compare File</string>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="fileButton">
+        <property name="geometry">
+         <rect>
+          <x>110</x>
+          <y>50</y>
+          <width>101</width>
+          <height>31</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Select File</string>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="uploadButton">
+        <property name="geometry">
+         <rect>
+          <x>290</x>
+          <y>300</y>
+          <width>101</width>
+          <height>24</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Upload Hash</string>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="switchToDirButton">
+        <property name="geometry">
+         <rect>
+          <x>10</x>
+          <y>10</y>
+          <width>301</width>
+          <height>31</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Single File Scan</string>
+        </property>
+       </widget>
+      </widget>
+      <widget class="QWidget" name="page_3">
+       <widget class="QPushButton" name="switchToSingleButton">
+        <property name="geometry">
+         <rect>
+          <x>10</x>
+          <y>10</y>
+          <width>301</width>
+          <height>31</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Directory File Scan</string>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="dir_fileButton">
+        <property name="geometry">
+         <rect>
+          <x>110</x>
+          <y>50</y>
+          <width>101</width>
+          <height>31</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Select Directory</string>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="dir_compareButton">
+        <property name="geometry">
+         <rect>
+          <x>180</x>
+          <y>110</y>
+          <width>91</width>
+          <height>41</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Compare Files</string>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="dir_hashButton">
+        <property name="geometry">
+         <rect>
+          <x>50</x>
+          <y>110</y>
+          <width>91</width>
+          <height>41</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Create Hashes</string>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="dir_uploadButton">
+        <property name="geometry">
+         <rect>
+          <x>290</x>
+          <y>300</y>
+          <width>101</width>
+          <height>24</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Upload Hashes</string>
+        </property>
+       </widget>
+      </widget>
      </widget>
     </widget>
    </widget>
@@ -193,12 +393,12 @@
      <x>0</x>
      <y>0</y>
      <width>800</width>
-     <height>21</height>
+     <height>18</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuCybersec_Toolkit">
     <property name="title">
-     <string>Cybersec Toolkit</string>
+     <string>CySec Toolkit</string>
     </property>
    </widget>
    <addaction name="menuCybersec_Toolkit"/>

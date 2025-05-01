@@ -8,12 +8,23 @@
 #include <QDebug>
 #include <QCryptographicHash>
 
+#include <QNetworkAccessManager>
+#include <QNetworkRequest>
+#include <QNetworkReply>
+#include <QJsonObject>
+#include <QJsonDocument>
+#include <QJsonArray>
+
+#include <QDir>
+#include <QDirIterator>
+#include <QTimer>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+    setWindowTitle("cybersec_toolkit.exe");
 }
 
 MainWindow::~MainWindow()
@@ -31,7 +42,20 @@ void MainWindow::on_stegButton_clicked()
     ui->stackedWidget->setCurrentIndex(0);//stack is in fact zero indexed
 }
 
-//********* file scanner functions *****************************
+
+void MainWindow::on_switchToDirButton_clicked()
+{
+    ui->stackedWidget_2->setCurrentIndex(1);
+}
+
+
+void MainWindow::on_switchToSingleButton_clicked()
+{
+    ui->stackedWidget_2->setCurrentIndex(0);
+}
+
+
+//********* single file scanner functions *****************************
 
 void MainWindow::on_fileButton_clicked()
 {
@@ -42,21 +66,120 @@ void MainWindow::on_fileButton_clicked()
     }
 }
 
+/*//break in case of emergency
+void MainWindow::on_uploadButton_clicked()
+{
+    if(lastComputedHash.isEmpty()){
+        QMessageBox::warning(this, "Error", "Please hash a file before uploading.");
+        return;
+    }
+
+    QUrl url("https://firestore.googleapis.com/v1/projects/cs490-f7072/databases/(default)/documents/hashes");
+    QNetworkRequest request(url);
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+
+    QJsonObject doc;
+    QJsonObject fields;
+    QJsonObject hashField;
+    hashField["stringValue"] = lastComputedHash;
+    fields["hash"] = hashField;
+    doc["fields"] = fields;
+
+    QNetworkAccessManager *manager = new QNetworkAccessManager(this);
+    QNetworkReply *reply = manager->post(request, QJsonDocument(doc).toJson());
+
+    connect(reply, &QNetworkReply::finished, this, [=]() {
+        if(reply->error() == QNetworkReply::NoError){
+            QMessageBox::information(this, "Success", "Hash uploaded to Firestore.");
+        }
+        else{
+            QMessageBox::warning(this, "Upload failed", reply->errorString());
+        }
+        reply->deleteLater();
+        manager->deleteLater();
+    });
+}
+*/
+
+void MainWindow::on_uploadButton_clicked()
+{
+    if(lastComputedHash.isEmpty()){
+        QMessageBox::warning(this, "Error", "Please hash a file before uploading.");
+        return;
+    }
+
+    QUrl url("https://firestore.googleapis.com/v1/projects/cs490-f7072/databases/(default)/documents/hashes");
+    QNetworkRequest request(url);
+
+    QNetworkAccessManager *manager = new QNetworkAccessManager(this);
+    QNetworkReply *reply = manager->get(request);
+
+    connect(reply, &QNetworkReply::finished, this, [=]() {
+        if(reply->error() != QNetworkReply::NoError){
+            QMessageBox::warning(this, "Error", "Failed to check existing hashes: " + reply->errorString());
+            reply->deleteLater();
+            manager->deleteLater();
+            return;
+        }
+
+        QByteArray response = reply->readAll();
+        QJsonDocument jsonDoc = QJsonDocument::fromJson(response);
+        QJsonArray documents = jsonDoc.object().value("documents").toArray();
+
+        QSet<QString> existingHashes;
+        for(const QJsonValue &docVal : documents){//fill set with firestore contents
+            QJsonObject fields = docVal.toObject().value("fields").toObject();
+            QString hash = fields.value("hash").toObject().value("stringValue").toString();
+            existingHashes.insert(hash);
+        }
+
+        if(existingHashes.contains(lastComputedHash)){
+            QMessageBox::information(this, "Info", "Hash already exists in Firestore.");
+        }
+        else{//upload only if it's not a duplicate
+            QJsonObject doc;
+            QJsonObject fields;
+            QJsonObject hashField;
+            hashField["stringValue"] = lastComputedHash;
+            fields["hash"] = hashField;
+            doc["fields"] = fields;
+
+            QNetworkRequest postRequest(url);
+            postRequest.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+            QNetworkReply *postReply = manager->post(postRequest, QJsonDocument(doc).toJson());
+
+            connect(postReply, &QNetworkReply::finished, this, [=]() {
+                if(postReply->error() == QNetworkReply::NoError){
+                    QMessageBox::information(this, "Success", "Hash uploaded to Firestore.");
+                }
+                else{
+                    QMessageBox::warning(this, "Upload failed", postReply->errorString());
+                }
+                postReply->deleteLater();
+                manager->deleteLater();
+            });
+        }
+        reply->deleteLater();
+    });
+}
+
+
+
 void MainWindow::on_hashButton_clicked()
 {
-    if (selectedFilePath.isEmpty()) {
+    if(selectedFilePath.isEmpty()){
         QMessageBox::warning(this, "No file", "Please select a file first.");
         return;
     }
 
     QFile file(selectedFilePath);
-    if (!file.open(QFile::ReadOnly)) {
+    if(!file.open(QFile::ReadOnly)){
         QMessageBox::warning(this, "Error", "Unable to open file for hashing.");
         return;
     }
 
     QCryptographicHash hash(QCryptographicHash::Sha1);
-    if (!hash.addData(&file)) {
+    if(!hash.addData(&file)){
         QMessageBox::warning(this, "Error", "Failed to hash file.");
         file.close();
         return;
@@ -65,14 +188,238 @@ void MainWindow::on_hashButton_clicked()
 
     QString hexHash = hash.result().toHex();
     QMessageBox::information(this, "File Hash", "SHA-1:\n" + hexHash);
-
-    //need to upload to firestore
+    lastComputedHash = hexHash; //store for upload
 }
 
 void MainWindow::on_compareButton_clicked()
 {
+    if(lastComputedHash.isEmpty()) {
+        QMessageBox::warning(this, "No hash", "Please hash a file before comparing.");
+        return;
+    }
 
+    QUrl url("https://firestore.googleapis.com/v1/projects/cs490-f7072/databases/(default)/documents/hashes?pageSize=1000");
+    QNetworkRequest request(url);
+    QNetworkAccessManager* manager = new QNetworkAccessManager(this);
+    QNetworkReply* reply = manager->get(request);
+
+    connect(reply, &QNetworkReply::finished, this, [=]() {
+        if (reply->error() != QNetworkReply::NoError) {
+            QMessageBox::warning(this, "Compare failed", reply->errorString());
+            reply->deleteLater();
+            manager->deleteLater();
+            return;
+        }
+
+        QJsonDocument responseDoc = QJsonDocument::fromJson(reply->readAll());
+        QJsonObject responseObj = responseDoc.object();
+        QJsonArray documents = responseObj["documents"].toArray();
+
+        bool foundMatch = false;
+        for(const QJsonValue& docVal : documents){
+            QJsonObject doc = docVal.toObject();
+            QJsonObject fields = doc["fields"].toObject();
+            QString hashValue = fields["hash"].toObject()["stringValue"].toString();
+            if (hashValue == lastComputedHash) {
+                foundMatch = true;
+                break;
+            }
+        }
+
+        if(foundMatch){
+            QMessageBox::information(this, "Compare Result", "Match found in Firestore.");
+        }
+        else{
+            QMessageBox::information(this, "Compare Result", "No match found.");
+        }
+
+        reply->deleteLater();
+        manager->deleteLater();
+    });
 }
+
+
+//********* directory file scanner functions *****************************
+
+void MainWindow::on_dir_fileButton_clicked()
+{
+    QString dirPath = QFileDialog::getExistingDirectory(this, "Select Directory to Scan");
+
+    if(!dirPath.isEmpty()){
+        selectedDirPath = dirPath;
+        QMessageBox::information(this, "Directory selected", "Operating on: " + selectedDirPath);
+    }
+}
+
+void MainWindow::on_dir_hashButton_clicked()
+{
+    if(selectedDirPath.isEmpty()){
+        QMessageBox::warning(this, "No directory", "Please select a directory first.");
+        return;
+    }
+
+    dirFileHashes.clear(); //clear prior scan
+    QDirIterator it(selectedDirPath, QDir::Files, QDirIterator::Subdirectories);
+    int count = 0;
+
+    while(it.hasNext()){
+        QString filePath = it.next();
+        QFile file(filePath);
+
+        if(file.open(QFile::ReadOnly)){
+            QCryptographicHash hash(QCryptographicHash::Sha1);
+
+            if(hash.addData(&file)){
+                QString hexHash = hash.result().toHex();
+                dirFileHashes.append(qMakePair(filePath, hexHash));
+                count++;
+            }
+            file.close();
+        }
+    }
+
+    QMessageBox::information(this, "Hashing Complete", QString("Hashed %1 file(s).").arg(count));
+}
+
+void MainWindow::on_dir_uploadButton_clicked()
+{
+    if(dirFileHashes.isEmpty()){
+        QMessageBox::warning(this, "No Hashes", "Please hash directory files before uploading.");
+        return;
+    }
+
+    QUrl url("https://firestore.googleapis.com/v1/projects/cs490-f7072/databases/(default)/documents/hashes");
+    QNetworkRequest request(url);
+
+    QNetworkAccessManager *manager = new QNetworkAccessManager(this);
+    QNetworkReply *reply = manager->get(request);
+
+    connect(reply, &QNetworkReply::finished, this, [=](){
+        if(reply->error() != QNetworkReply::NoError){
+            QMessageBox::warning(this, "Error", "Failed to fetch existing hashes: " + reply->errorString());
+            reply->deleteLater();
+            manager->deleteLater();
+            return;
+        }
+
+        QSet<QString> existingHashes;
+        QByteArray response = reply->readAll();
+        QJsonDocument jsonDoc = QJsonDocument::fromJson(response);
+        QJsonArray documents = jsonDoc.object().value("documents").toArray();
+
+        for(const QJsonValue &docVal : documents){  //copy firestore contents
+            QJsonObject fields = docVal.toObject().value("fields").toObject();
+            QString hash = fields.value("hash").toObject().value("stringValue").toString();
+            existingHashes.insert(hash);
+        }
+
+        int uploadedCount = 0;
+        for(const auto &pair : dirFileHashes){
+            const QString &hash = pair.second;
+            if(!existingHashes.contains(hash)){
+                QJsonObject doc;
+                QJsonObject fields;
+                QJsonObject hashField;
+                hashField["stringValue"] = hash;
+                fields["hash"] = hashField;
+                doc["fields"] = fields;
+
+                QNetworkRequest postRequest(url);
+                postRequest.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+
+                QNetworkReply *postReply = manager->post(postRequest, QJsonDocument(doc).toJson());
+                connect(postReply, &QNetworkReply::finished, this, [=]() {
+                    postReply->deleteLater();
+                });
+
+                uploadedCount++;
+            }
+        }
+
+        QMessageBox::information(this, "Upload complete",
+                                 uploadedCount == 0 ? "All hashes already exist." : QString("Uploaded %1 new hash%2.")
+                                                                                        .arg(uploadedCount)
+                                                                                        .arg(uploadedCount == 1 ? "" : "es"));  //handle unknown plurality
+
+        reply->deleteLater();
+        manager->deleteLater();
+    });
+}
+
+void MainWindow::on_dir_compareButton_clicked()
+{
+    if(dirFileHashes.isEmpty()){
+        QMessageBox::warning(this, "Error", "Please hash a directory first.");
+        return;
+    }
+
+    QUrl url("https://firestore.googleapis.com/v1/projects/cs490-f7072/databases/(default)/documents/hashes");
+    QNetworkRequest request(url);
+
+    QNetworkAccessManager *manager = new QNetworkAccessManager(this);
+    QNetworkReply *reply = manager->get(request);
+
+    connect(reply, &QNetworkReply::finished, this, [=](){
+
+        if(reply->error() != QNetworkReply::NoError){
+            QMessageBox::warning(this, "Error", "Failed to retrieve hashes: " + reply->errorString());
+            reply->deleteLater();
+            manager->deleteLater();
+            return;
+        }
+
+        QSet<QString> firestoreHashes;
+        QByteArray response = reply->readAll();
+        QJsonDocument jsonDoc = QJsonDocument::fromJson(response);
+        QJsonArray documents = jsonDoc.object().value("documents").toArray();
+
+        for(const QJsonValue &docVal : documents){  //copy firestore contents
+            QJsonObject fields = docVal.toObject().value("fields").toObject();
+            QString hash = fields.value("hash").toObject().value("stringValue").toString();
+            firestoreHashes.insert(hash);
+        }
+
+        QStringList matchedFilePaths;
+        for(const auto &pair : dirFileHashes){  //hold onto file paths for removal
+            const QString &filePath = pair.first;
+            const QString &localHash = pair.second;
+
+            if(firestoreHashes.contains(localHash)){
+                matchedFilePaths << filePath;
+            }
+        }
+
+        if(matchedFilePaths.isEmpty()){
+            QMessageBox::information(this, "No Matches", "No matching hashes found in Firestore.");
+        }
+        else{
+            QString msg = QString("Matched %1 file(s):\n\nDo you want to remove them?")
+                              .arg(matchedFilePaths.size());
+            //.arg(matchedFilePaths.join("\n"));    //not sure about listing out all filepaths. looks ugly and possibly pointless
+
+            QMessageBox::StandardButton reply = QMessageBox::question(this, "Matches Found", msg,
+                                                                      QMessageBox::Yes | QMessageBox::No);
+
+            if(reply == QMessageBox::Yes){
+                int deletedCount = 0;
+                for(const QString &filePath : matchedFilePaths){
+                    if(QFile::remove(filePath)){
+                        deletedCount++;
+                    }
+                }
+
+                QMessageBox::information(this, "Removal Complete",
+                                         QString("Deleted %1 out of %2 matched files.")
+                                             .arg(deletedCount)
+                                             .arg(matchedFilePaths.size()));    //pleasantly similar to printf formatting. am i retarded
+            }
+        }
+
+        reply->deleteLater();
+        manager->deleteLater(); //yes
+    });
+}
+
 
 
 //********** steganography functions ****************************
@@ -190,5 +537,8 @@ void MainWindow::on_decodeButton_clicked() {
     }
     ui->decodeLabel->setText("Decoded message: " + QString::fromUtf8(message));
 }
+
+
+
 
 
