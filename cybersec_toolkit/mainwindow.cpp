@@ -1,23 +1,25 @@
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
 
-#include <QStackedWidget>
+#include <QStackedWidget>   //
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QImage>
 #include <QDebug>
 #include <QCryptographicHash>
 
-#include <QNetworkAccessManager>
+#include <QNetworkAccessManager>    //firebase networking
 #include <QNetworkRequest>
 #include <QNetworkReply>
 #include <QJsonObject>
 #include <QJsonDocument>
 #include <QJsonArray>
 
-#include <QDir>
+#include <QDir> //directories
 #include <QDirIterator>
 #include <QTimer>
+
+#include <QProgressDialog>  //progress bar
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -164,7 +166,6 @@ void MainWindow::on_uploadButton_clicked()
 }
 
 
-
 void MainWindow::on_hashButton_clicked()
 {
     if(selectedFilePath.isEmpty()){
@@ -259,13 +260,28 @@ void MainWindow::on_dir_hashButton_clicked()
     }
 
     dirFileHashes.clear(); //clear prior scan
-    QDirIterator it(selectedDirPath, QDir::Files, QDirIterator::Subdirectories);
+    QDirIterator counterIt(selectedDirPath, QDir::Files, QDirIterator::Subdirectories);
+    QStringList allFiles;   //track number of files for progress updater
+    while(counterIt.hasNext()){
+        allFiles << counterIt.next();
+    }
+
+    int totalFiles = allFiles.size();
+    if(totalFiles == 0){    //error check no files
+        QMessageBox::information(this, "Empty", "No files found in the directory.");
+        return;
+    }
+
+    QProgressDialog progress("Hashing files...", "Cancel", 0, totalFiles, this);
+    progress.setWindowModality(Qt::ApplicationModal);
+    progress.setMinimumDuration(0);
+    progress.setWindowTitle("Please wait");
+    progress.setAutoClose(true);
+    progress.setCancelButton(nullptr);  //hides cancel button
+
     int count = 0;
-
-    while(it.hasNext()){
-        QString filePath = it.next();
+    for(const QString &filePath : allFiles){
         QFile file(filePath);
-
         if(file.open(QFile::ReadOnly)){
             QCryptographicHash hash(QCryptographicHash::Sha1);
 
@@ -276,10 +292,15 @@ void MainWindow::on_dir_hashButton_clicked()
             }
             file.close();
         }
+
+        progress.setValue(count);
+        qApp->processEvents();  //allows the dialog to repaint
     }
+    progress.setValue(totalFiles);  //set progress bar to 100% on completion
 
     QMessageBox::information(this, "Hashing Complete", QString("Hashed %1 file(s).").arg(count));
 }
+
 
 void MainWindow::on_dir_uploadButton_clicked()
 {
